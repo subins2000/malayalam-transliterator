@@ -1,4 +1,8 @@
+from mlmorph import Analyser
+from mlmorph_spellchecker import SpellChecker
 import sqlite3
+import sys
+
 vowels = {
     "a": ["അ", ""],
     "aa": ["ആ", "ാ"],
@@ -17,7 +21,8 @@ consonants = {
 
 chil = {
     "m": ["ം", "മ"],
-    "l": ["ൽ", "ല"]
+    "l": ["ൽ", "ല"],
+    "L": ["ൾ", "ള"],
 }
 
 scheme = []
@@ -28,12 +33,12 @@ def makeScheme():
         scheme.append({
             "combo": c,
             "i": cList,  # info
-            "weight": 0,
+            "weight": 1,
             "type": "vowel"
         })
 
     for c, cList in consonants.items():
-        weight = 0
+        weight = 1
         for ci in cList:
             scheme.append({
                 "combo": c,
@@ -44,7 +49,7 @@ def makeScheme():
             weight += 1
 
     for c, cList in consonants.items():
-        weight = 0
+        weight = 1
         for ci in cList:
             for v, vi in vowels.items():
                 scheme.append({
@@ -110,6 +115,15 @@ def make(word):
     return result
 
 
+def weight(word, fixed):
+    # cands = sp.candidates(word)
+    # print(cands)
+    result = analyser.analyse(word)
+    if len(result) != 0:
+        return result[0][1]
+    return fixed
+
+
 def flatten(tokens):
     results = []
     first = True
@@ -136,7 +150,7 @@ def flatten(tokens):
                         results.append([till, tillWeight])
         else:
             if first:
-                results.append([t, 0])
+                results.append([t, 1])
                 first = False
             else:
                 for j in range(len(results)):
@@ -146,8 +160,22 @@ def flatten(tokens):
     return results
 
 
+sp = SpellChecker()
+analyser = Analyser()
+
+
 def transliterate(word):
-    return flatten(make(word))
+    fixed = len(word) * 100
+    sugs = flatten(make(word))
+    print(sugs)
+    for s in sugs:
+        s[1] += weight(s[0], fixed)
+
+    sugs = sorted(
+        sugs,
+        key=lambda t: t[1]
+    )
+    return sugs
 
 
-print(transliterate("kaaaaaaaaa"))
+print(transliterate(sys.argv[1]))
