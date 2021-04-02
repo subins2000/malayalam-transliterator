@@ -133,6 +133,8 @@ def weight(word):
     weight = len(word)
     if len(result) != 0:
         for r in result:
+            # This is a stupid logic. Made in haste
+            weight = int(weight / 2)
             match = ANALYSER_REGEX.match(r)
             roots = match.captures("root")
             if word in roots:
