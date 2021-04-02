@@ -1,12 +1,19 @@
-from mlmorph import Analyser
-from mlmorph_spellchecker import SpellChecker
+# from mlmorph import Analyser
+# from mlmorph_spellchecker import SpellChecker
+
+import regex
+import re
+import sfst
 import sqlite3
 import sys
+
+sfst.init('malayalam.a')
 
 vowels = {
     "a": ["അ", ""],
     "aa": ["ആ", "ാ"],
     "i": ["ഇ", "ി"],
+    "u": ["ഇ", "ൂ"],
 }
 
 consonants = {
@@ -14,9 +21,11 @@ consonants = {
     "m": ["മ", "ം"],
     "l": ["ല", "ള"],
     "L": ["ള"],
+    "p": ["പ"],
+    "pp": ["പ്പ"],
     "v": ["വ"],
     "t": ["റ്റ"],
-    "th": ["ത"],
+    "th": ["ത", "ഥ"],
 }
 
 chil = {
@@ -115,13 +124,21 @@ def make(word):
     return result
 
 
-def weight(word, fixed):
-    # cands = sp.candidates(word)
-    # print(cands)
-    result = analyser.analyse(word)
+ANALYSER_REGEX = regex.compile(r"((?P<root>([^<])+)(?P<tags>(<[^>]+>)+))+")
+
+
+def weight(word):
+    result = sfst.analyse(word)
+    # print(word, result)
+    weight = len(word)
     if len(result) != 0:
-        return result[0][1]
-    return fixed
+        for r in result:
+            match = ANALYSER_REGEX.match(r)
+            roots = match.captures("root")
+            if word in roots:
+                weight = 0
+                break
+    return weight
 
 
 def flatten(tokens):
@@ -160,16 +177,11 @@ def flatten(tokens):
     return results
 
 
-sp = SpellChecker()
-analyser = Analyser()
-
-
 def transliterate(word):
-    fixed = len(word) * 100
     sugs = flatten(make(word))
     print(sugs)
     for s in sugs:
-        s[1] += weight(s[0], fixed)
+        s[1] += weight(s[0])
 
     sugs = sorted(
         sugs,
